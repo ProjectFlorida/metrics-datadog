@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -171,7 +172,14 @@ public class DatadogReporter extends ScheduledReporter {
 			jsonOut.writeStartArray();
 
 			for (Map.Entry<String, Gauge> entry : gauges.entrySet()) {
-				this.writeGauge(jsonOut, entry.getKey(), ((Gauge<Number>)entry.getValue()).getValue(), timestamp);
+				// If we have a Gauge<Set>, the size of the set should be reported as the value
+				// of the gauge. Otherwise, cast as number.
+				Object value = entry.getValue().getValue();
+				if (value instanceof Set) {
+					this.writeGauge(jsonOut, entry.getKey(), ((Set) value).size(), timestamp);
+				} else {
+					this.writeGauge(jsonOut, entry.getKey(), ((Number) value), timestamp);
+				}
 			}
 
 			for (Map.Entry<String, Counter> entry : counters.entrySet()) {
