@@ -177,8 +177,10 @@ public class DatadogReporter extends ScheduledReporter {
 				Object value = entry.getValue().getValue();
 				if (value instanceof Set) {
 					this.writeGauge(jsonOut, entry.getKey(), ((Set) value).size(), timestamp);
-				} else {
+				} else if (value instanceof Number) {
 					this.writeGauge(jsonOut, entry.getKey(), ((Number) value), timestamp);
+				} else {
+					LOGGER.warn("Unrecognized Gauge type, will not report: " + entry.getKey());
 				}
 			}
 
