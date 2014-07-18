@@ -11,8 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -51,6 +53,44 @@ public class DatadogReporterTest {
 	
 	@After
 	public void tearDown() {}
+
+	@Test
+	public void testNonNumericGaugeSend() throws IOException {
+		registry.register(MetricRegistry.name(DatadogReporterTest.class, "foo.bar"), new Gauge<Set<String>>() {
+			private Set<String> values = new HashSet<String>();
+
+			@Override
+			public Set<String> getValue() {
+				values.add("foo");
+				values.add("bar");
+				return values;
+			}
+		});
+
+		assertEquals(0, transport.numRequests);
+		reporter.report();
+		assertEquals(1, transport.numRequests);
+
+		String body = new String(transport.lastRequest.getPostBody(), "UTF-8");
+		Map<String, Object> request = new ObjectMapper().readValue(body, HashMap.class);
+
+		List<Object> series = (List<Object>) request.get("series");
+
+		// We've only added one metric
+		assertEquals(1, series.size());
+
+		Map<String, Object> gaugeEntry = (Map<String, Object>) series.get(0);
+		List<List<Number>> points = (List<List<Number>>) gaugeEntry.get("points");
+
+		// Our metric name and type are correct
+		assertEquals("com.codahale.metrics.reporting.DatadogReporterTest.foo.bar", gaugeEntry.get("metric"));
+		assertEquals("gauge", gaugeEntry.get("type"));
+
+		// Points looks like: [[<timestamp>, <value>], [<timestamp>, <value>]]
+		// Our set should be a size of two, so the value at index one of our only
+		// entry should be 2.
+		assertEquals(2, points.get(0).get(1));
+	}
 
 //	@SuppressWarnings("unchecked")
 	@Test
