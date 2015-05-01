@@ -20,7 +20,7 @@ public abstract class DatadogSeries<T extends Number> {
   // Expect the tags in the pattern
   // namespace.metricName[tag1:value1,tag2:value2,etc....]
   private final Pattern tagPattern = Pattern
-      .compile("([\\w\\.]+)\\[([\\w\\W]+)\\]");
+      .compile("([\\w\\.-]+)\\[([\\w\\W]+)\\]");
 
   public DatadogSeries(String name, T count, Long epoch, String host) {
     Matcher matcher = tagPattern.matcher(name);
